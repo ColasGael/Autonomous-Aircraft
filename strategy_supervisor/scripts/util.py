@@ -1,4 +1,5 @@
 import numpy as np
+from math import sin, cos, sqrt, atan2, radians
 
 '''
 Useful classes and functions are defined here
@@ -39,13 +40,15 @@ class Graph:
 	Attributes:
 		'n' (int) : number of nodes
 		'nodes' (n*2 double np.array) : position of the nodes in the GPS format, nodes[i] = [latitude, longitude]
+		'prob' (n double np.array) : prob[i] = probability that a query starts from node i
 		'adj'	(n*n int np.array) : adjacency matrix, adj[i,j] = 1 if connexion between vertiports i and j, 0 otherwise
 	'''
 	
 	def __init__(self, nodes, adj):
 		self.n = len(nodes)
 		self.nodes = np.array(nodes)
-		# self.adj = np.array(adj)
+		self.adj = np.array(adj)
+		self.prob = np.sum(self.adj,0)/np.sum(self.adj)
 	
 	def dist (self, i, j):
 		'''compute the euclidian distance between nodes i and join
@@ -93,7 +96,7 @@ class Bid:
 	'''Bid represents the bid made by our team to a client query
 	
 	Attributes:
-		'query_id' (int): unique id of the query
+		'query' (int): corresponding query
 		'start' (int) : id of the starting vertiport
 		'end' (int) : id of the destination vertiport
 		'drone' (Drone) : drone affected to the bid
@@ -103,8 +106,8 @@ class Bid:
 		'profit' (double) : profit made on this trip
 	'''
 		
-	def __init__(self, query, drone=None, estimated_time=0, amount=0, accepted=False, profit=0):
-		self.querry_id = query.id
+	def __init__(self, query, drone=None, estimated_time=0, amount=0, profit=0, accepted=False):
+		self.query = query
 		self.start = query.start
 		self.end = query.end
 		

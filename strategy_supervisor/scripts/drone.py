@@ -1,7 +1,7 @@
 import numpy as np
 from enum import Enum
 
-import util
+from util import *
 
 #	TO ADD : 
 #	the following parameters must be modified to match the performances of our actual drone
@@ -35,7 +35,7 @@ class Drone:
 		'goal' (np.array) : goal position of the drone in the GPS format [latitude, longitude]
 		
 		'battery' (double) : level of the drone battery (between 0 and 1)
-		'speed' (double) : forward speed of the drone
+		'speed' (double) : forward speed of the drone (in m/s)
 
 		'p_takeoff' (double) : percentage of battery used for takeoff
 		'p_landing' (double) : percentage of battery used for landing		
@@ -46,7 +46,7 @@ class Drone:
 		- the 'speed' attributes has to be inferred from Task 1 (without wings) and Task 3 (with wings)
 		- 'position' in the GPS format [latitude in ???, longitude in ???, height in ???]
 	'''	
-	speed = 1
+	speed = 7	# in m/s
 	p_takeoff = 0
 	p_landing = 0
 	p_travel = 0

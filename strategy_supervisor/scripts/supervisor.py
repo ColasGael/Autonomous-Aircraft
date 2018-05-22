@@ -1,13 +1,9 @@
 
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
-from enum import Enum
 
-import util
-import drone
-
-from math import sin, cos, sqrt, atan2, radians
+from util import *
+from drone import *
 
 # TO IMPLEMENT:
 #	- 'cost_function' function
@@ -33,9 +29,19 @@ class Supervisor:
 		- the list of bids provide a useful dataset to adapt our strategy
 	'''
 
-	def __init__(self, n_drones, graph)
-		self.drones  = [Drone(id) for id in range(n_drones)]
+	def __init__(self, graph, n_drones, positions, queries = []):
+		'''create an instance of Supervisor
+		
+		Args:
+			'graph' (Graph) : graph of the vertices with their connections
+			'n_drones' (int) : number of available drones
+			'positions' (np.array, shape = (n_drones, 3)) : list of drone initial positions 
+			'queries' (Query list) : list of queries to be answered
+		'''
+		
 		self.graph = graph
+		self.drones  = [Drone(id, position = positions[id]) for id in range(n_drones)]
+		self.queries = queries
 		self.bids = []
 		
 	def profit(self):
@@ -46,7 +52,7 @@ class Supervisor:
 		'''
 		
 		# list of all the profits for each won bid
-		profits = [bid.profit for bid in self.bids if bid.accepted = True]
+		profits = [bid.profit for bid in self.bids if bid.accepted]
 		# compute the total profit
 		profit = np.sum(profits)
 		
@@ -61,8 +67,8 @@ class Supervisor:
 		Returns:
 			'cost' (double) : cost of the trip
 		'''
-		fixed_cost = 0
-		variable_cost = 0
+		fixed_cost = 10
+		variable_cost = 0.1
 		
 		cost = fixed_cost + variable_cost*time
 		
@@ -116,11 +122,14 @@ class Supervisor:
 		Returns:
 			'bid' (Bid) : bid proposal for the query
 		'''
+		loc_start, loc_end = self.graph.nodes[query.start, :], self.graph.nodes[query.end, :]
+
+		# find available drones : they must have enough battery to complete the trip
+		available_drones = [drone for drone in drones if (drone.battery_depletion(drone.dist_trip(loc_start, loc_end)) < drone.battery)]
 		
 		# affected drone
 		drone = self.pick_drone(drones, query)
 		# distance that the drone need to fly
-		loc_start, loc_end = self.graph.nodes[query.start, :], self.graph.nodes[query.end, :]
 		dist = drone.dist_trip(loc_start, loc_end)
 		# time that the drone need to fly
 		estimated_time = dist/drone.speed
@@ -129,7 +138,7 @@ class Supervisor:
 		# estimated profit for this trip
 		profit = amount - self.cost_function(estimated_time)
 		
-		bid = Bid(query, drone, dist, estimated_time, amount, profit)
+		bid = Bid(query, drone, estimated_time, amount, profit)
 		
 		return bid
 	
@@ -143,8 +152,8 @@ class Supervisor:
 			- the current strategy is to answer as many queries as there are available drones
 			- the queries are answered in decreasing estimated profit order
 		'''
-		# find available drones : they must be waiting and having enough battery to complete the trip
-		idle_drones = [drone for drone in self.drones if (drone.status==Status.IDLE) and (drone.battery_depletion(drone.dist_trip(loc_start, loc_end)) < drone.battery)]	
+		# find available drones : they must be waiting
+		idle_drones = [drone for drone in self.drones if (drone.status==Status.IDLE)]	
 		
 		if not idle_drones:
 			return []
@@ -154,38 +163,40 @@ class Supervisor:
 		
 		for i in range(len(self.queries)):
 			query = self.queries[i]
-			bid = write_bid(idle_drones, query)
+			bid = self.write_bid(idle_drones, query)
 			
 			if bid.profit > 0:
 				proposal_bids.append(bid)
 		
 		# sort the bids proposal in decreasing profit order
 		proposal_bids.sort(key = lambda x : -x.profit)
-		
+				
 		bids = []
 		# pick the best bids
-		for i in range(np.min( len(proposal_bids), len(idle_drones))):
+		n_bids = min( len(proposal_bids), len(idle_drones))
+		i = 0
+		while i < n_bids:
 			bid = proposal_bids[i]
 			drone = bid.drone
 			
 			# check that the drone has not been affected to a previous query
 			if not drone in idle_drones:
-				i -= 1
 				# create a new bid proposal
-				bid = write_bid(idle_drones, query)
+				bid = self.write_bid(idle_drones, bid.query)
 				if bid.profit > 0:
 					# push the new proposal
 					proposal_bids[i] = bid
 					proposal_bids.sort(key = lambda x : -x.profit)	
 					
 			else:
-				# add a deifinitive bid
+				i += 1 
+				# add a definitive bid
 				bids.append(bid)
 				# remove the corresponding query from the waiting queries
 				self.queries = filter(lambda x: x.id == bid.query_id, self.queries)				
 				# remove the affected drone from the list of available drone
 				idle_drones.remove(drone)
-		
+				
 		return bids
 	
 	def query_callback(self, query):
